@@ -63,6 +63,78 @@ function secondPhase (_data) {
   }, data)
 }
 
+function getRotation (state, index = 0, person = Object.keys(state)[index], items = []) {
+  const isTerminationConditionReached = items.filter(([i]) => i === person)
+  if (isTerminationConditionReached) {
+    return [state, items]
+  }
+  const hasSecondPreference = state[person] && state[person][1]
+  if (!hasSecondPreference) {
+    return getRotation(state, index + 1, Object.keys(state)[index + 1], items)
+  }
+  const secondPreference = state[person][1]
+  const newItems = items.concat([person, secondPreference])
+  const lastPreference = state[secondPreference][state[secondPreference].length - 1]
+  return getRotation(state, index, lastPreference, newItems)
+}
+
+function thirdPhase (data) {
+  let startIndex = 0
+  let start = Object.keys(data)[startIndex]
+  const m = []
+  let same
+  // Loop for rotation
+  while (start !== same) {
+    if (!same) {
+      same = start
+    }
+    let second = data[same][1]
+    if (!second) {
+      startIndex += 1
+      start = Object.keys(data)[startIndex]
+      same = start
+      second = data[same][1]
+      console.log('ss', same, second)
+      if (same === second) continue
+    }
+    m.push([same, second])
+    same = data[second][data[second].length - 1]
+  }
+  m.push([same])
+
+  const rotations = []
+  m.reverse().forEach((pairs, index) => {
+    if (m && m[index + 1]) {
+      const a = pairs[0]
+      const b = m[index + 1][1]
+      if (a !== b) {
+        rotations.push([a, b])
+      }
+    }
+  })
+  rotations.forEach(([k, v]) => {
+    data[k] = data[k].filter(i => i !== v)
+    data[v] = data[v].filter(i => i !== k)
+  })
+  console.log('\nrotations', rotations)
+  console.log('data before', data)
+  Object.keys(data).forEach(item => {
+    if (data[item].length === 1) {
+      const firstItem = data[item][0]
+      data[firstItem] = data[firstItem].filter(v => v === item)
+      console.log('hi', item, firstItem)
+      Object.keys(data).forEach((_item) => {
+        if (_item !== item && _item !== firstItem) {
+          console.log('current ly', _item)
+          data[_item] = data[_item].filter(m => !(m === item || m === firstItem))
+        }
+      })
+      console.log('hida', data)
+    }
+  })
+  console.log('data after', data, '\n')
+}
+
 function main () {
   let [_, data] = firstPhase({
     1: ['3', '4', '2', '6', '5'],
@@ -75,64 +147,12 @@ function main () {
 
   data = secondPhase(data)
 
+  data = getRotation(data)
   // Step 3
-  function step3 () {
-    let startIndex = 0
-    let start = Object.keys(data)[startIndex]
-    const m = []
-    let same
-    while (start !== same) {
-      if (!same) {
-        same = start
-      }
-      let second = data[same][1]
-      if (!second) {
-        startIndex += 1
-        start = Object.keys(data)[startIndex]
-        same = start
-        second = data[same][1]
-        console.log('ss', same, second)
-        if (same === second) continue
-      }
-      m.push([same, second])
-      same = data[second][data[second].length - 1]
-    }
-    m.push([same])
-    const rotations = []
-    m.reverse().forEach((pairs, index) => {
-      if (m && m[index + 1]) {
-        const a = pairs[0]
-        const b = m[index + 1][1]
-        if (a !== b) {
-          rotations.push([a, b])
-        }
-      }
-    })
-    rotations.forEach(([k, v]) => {
-      data[k] = data[k].filter(i => i !== v)
-      data[v] = data[v].filter(i => i !== k)
-    })
-    console.log('\nrotations', rotations)
-    console.log('data before', data)
-    Object.keys(data).forEach(item => {
-      if (data[item].length === 1) {
-        const firstItem = data[item][0]
-        data[firstItem] = data[firstItem].filter(v => v === item)
-        console.log('hi', item, firstItem)
-        Object.keys(data).forEach((_item) => {
-          if (_item !== item && _item !== firstItem) {
-            console.log('current ly', _item)
-            data[_item] = data[_item].filter(m => !(m === item || m === firstItem))
-          }
-        })
-        console.log('hida', data)
-      }
-    })
-    console.log('data after', data, '\n')
-  }
-  step3()
-  step3()
-  step3()
+
+  // step3()
+  // step3()
+  // step3()
 
   console.log('output =>')
   console.log(data)
