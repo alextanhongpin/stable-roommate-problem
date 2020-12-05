@@ -168,6 +168,15 @@ const preferences5 = {
   100: [46, 94, 25, 41, 69, 24, 60, 40, 96, 10, 44, 81, 82, 84, 87, 68, 93, 95, 34, 13, 16, 17, 20, 45, 56, 64, 71, 72, 39, 67, 4, 11, 21, 42, 57, 92, 99, 6, 30, 33, 47, 51, 1, 3, 5, 9, 18, 23, 26, 28, 43, 49, 50, 54, 55, 66, 76, 78, 80, 85, 86, 89, 90, 97, 98, 15, 31, 32, 38, 91, 12, 35, 70, 77, 2, 7, 8, 14, 19, 22, 27, 29, 36, 37, 48, 52, 53, 58, 59, 61, 62, 63, 65, 73, 74, 75, 79, 83, 88]
 }
 
+const preferences6 = {
+  1: [4, 6, 2, 5, 3],
+  2: [6, 3, 5, 1, 4],
+  3: [4, 5, 1, 6, 2],
+  4: [2, 6, 5, 1, 3],
+  5: [4, 2, 3, 6, 1],
+  6: [5, 1, 4, 2, 3]
+}
+
 
 function stringify(o) {
   const r = {}
@@ -186,46 +195,50 @@ function clone(o) {
 }
 
 function stableRoommateProblem(preferences) {
-  const people = Object.keys(preferences)
-  const accepted = {}
-  // Phase 1.
-  while (people.length) {
-    const currProposer = people.shift()
-    const proposed = preferences[currProposer][0]
-    const prevProposer = accepted[proposed]
+  function phase1And2(preferences) {
+    const people = Object.keys(preferences)
+    const accepted = {}
+    // Phase 1.
+    while (people.length) {
+      const currProposer = people.shift()
+      const proposed = preferences[currProposer][0]
+      const prevProposer = accepted[proposed]
 
-    if (prevProposer) {
-      const prevRank = preferences[proposed].indexOf(prevProposer)
-      const currRank = preferences[proposed].indexOf(currProposer)
+      if (prevProposer) {
+        const prevRank = preferences[proposed].indexOf(prevProposer)
+        const currRank = preferences[proposed].indexOf(currProposer)
 
-      // Lower the index, the higher the preference.
-      const idx = prevRank < currRank ? currRank : prevRank
-      const rejects = prevRank < currRank ? currProposer : prevProposer
-      const accepts = prevRank < currRank ? prevProposer : currProposer
-      people.unshift(rejects)
-      preferences[rejects].shift()
-      const rejected = preferences[proposed].slice(idx)
-      for (const r of rejected) {
-        preferences[r] = preferences[r].filter(person => person !== proposed)
+        // Lower the index, the higher the preference.
+        const idx = prevRank < currRank ? currRank : prevRank
+        const rejects = prevRank < currRank ? currProposer : prevProposer
+        const accepts = prevRank < currRank ? prevProposer : currProposer
+        people.unshift(rejects)
+        preferences[rejects].shift()
+        const rejected = preferences[proposed].slice(idx)
+        for (const r of rejected) {
+          preferences[r] = preferences[r].filter(person => person !== proposed)
+        }
+        preferences[proposed] = preferences[proposed].slice(0, idx)
+        accepted[proposed] = accepts
+      } else {
+        accepted[proposed] = currProposer
       }
-      preferences[proposed] = preferences[proposed].slice(0, idx)
-      accepted[proposed] = accepts
-    } else {
-      accepted[proposed] = currProposer
+    }
+
+    // Phase 2: Reject those lower than the preferences
+    for (let proposer in preferences) {
+      const idx = preferences[proposer].indexOf(accepted[proposer])
+      if (idx === -1) continue
+      const kept = preferences[proposer].slice(0, idx + 1)
+      const reject = preferences[proposer].slice(idx + 1)
+      for (const rejected of reject) {
+        preferences[rejected] = preferences[rejected].filter(person => person !== proposer)
+      }
+      preferences[proposer] = kept
     }
   }
 
-  // Phase 2: Reject those lower than the preferences
-  for (let proposer in preferences) {
-    const idx = preferences[proposer].indexOf(accepted[proposer])
-    if (idx === -1) continue
-    const kept = preferences[proposer].slice(0, idx + 1)
-    const reject = preferences[proposer].slice(idx + 1)
-    for (const rejected of reject) {
-      preferences[rejected] = preferences[rejected].filter(person => person !== proposer)
-    }
-    preferences[proposer] = kept
-  }
+  phase1And2(preferences)
 
   // Phase 3: Eliminate rotation.
   while (Object.values(preferences).some(prefs => prefs.length > 1)) {
@@ -236,18 +249,8 @@ function stableRoommateProblem(preferences) {
       preferences[x].shift()
       preferences[y].pop()
     }
-
-    for (let person in preferences) {
-      const first = head(preferences[person])
-      if (person !== tail(preferences[first])) {
-        const idx = preferences[first].indexOf(person)
-        const rejected = preferences[first].slice(idx + 1)
-        for (let reject of rejected) {
-          preferences[reject] = preferences[reject].filter(p => p !== person)
-        }
-        preferences[first] = preferences[first].slice(0, idx + 1)
-      }
-    }
+    // Repeat to fulfill the condition.
+    phase1And2(preferences)
   }
   const result = []
   for (let person in preferences) {
@@ -320,6 +323,6 @@ console.log('1', stableRoommateProblem(preferences1))
 console.log('2', stableRoommateProblem(stringify(preferences2)))
 console.log('3', stableRoommateProblem(stringify(preferences3)))
 console.log('4', stableRoommateProblem(stringify(preferences4)))
-// This does not work.
-// console.log('5', stableRoommateProblem(stringify(preferences5)))
-console.log('6', stableRoommateProblem(stringify(generateList(30))))
+console.log('5', stableRoommateProblem(stringify(preferences5)))
+console.log('6', stableRoommateProblem(stringify(preferences6)))
+console.log('7', stableRoommateProblem(stringify(generateList(100))))
