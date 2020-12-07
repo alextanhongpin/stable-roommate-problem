@@ -1,5 +1,7 @@
 # stable-roommate-problem
-Solving the stable roommate problem with Irving's algorithm
+Solving the stable roommate problem with Irving's algorithm.
+
+To understand more about the algorithm, see the wiki page in the references, with the accompanied diagrams (for clarification on the finding rotation part).
 
 ## References
 

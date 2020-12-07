@@ -1,142 +1,149 @@
-
-function isBreakup (data, from, p1, p2) {
-  // If p1 has lower score, it means p1 is preferred over p2
-  const scores = data[from]
-  return scores.indexOf(p1) < scores.indexOf(p2)
+function stringify(o) {
+  const r = {};
+  for (let k in o) {
+    r[k] = o[k].map(i => i.toString());
+  }
+  return r;
 }
 
-function breakup (state, person, choice) {
-  const oldValue = state[person]
-  const newValue = oldValue.filter(i => i !== choice)
-  return { ...state, [person]: newValue }
+function clone(o) {
+  const c = {};
+  for (let key in o) {
+    c[key] = [...o[key]];
+  }
+  return c;
 }
 
-function removePreference (state, person) {
-  const oldValue = state[person]
-  const newValue = oldValue.slice(1, oldValue.length)
-  return { ...state, [person]: newValue }
+function tail(arr) {
+  return arr?.[arr?.length - 1];
 }
 
-function firstPhase (data) {
-  return Object.entries(data).reduce(([matches, data], [person, value]) => {
-    const nextProposal = value[0]
-    const isProposed = matches[nextProposal]
-    if (!isProposed) {
-      matches[nextProposal] = person
-    } else {
-      const currentProposal = matches[nextProposal]
-      if (isBreakup(data, nextProposal, person, currentProposal)) {
-        data = breakup(data, nextProposal, currentProposal)
-        data = removePreference(data, currentProposal)
+function head(arr) {
+  return arr[0];
+}
 
-        matches[nextProposal] = person
-        matches[data[currentProposal][0]] = currentProposal
+function stableRoommateProblem(preferences) {
+  preferences = stringify(preferences);
+  function phase1And2(preferences) {
+    const people = Object.keys(preferences);
+    const accepted = {};
+
+    // Phase 1: Create preference list. Each person (p) in the list propose to
+    // the first person (q) on the list. If the person (q) already has a
+    // proposal (o), check whether (o) prefers (p) or (q).
+    while (people.length) {
+      const currProposer = people.shift();
+      const proposed = preferences[currProposer][0];
+      const prevProposer = accepted[proposed];
+
+      if (prevProposer) {
+        const prevRank = preferences[proposed].indexOf(prevProposer);
+        const currRank = preferences[proposed].indexOf(currProposer);
+
+        // Lower the index, the higher the preference.
+        const idx = prevRank < currRank ? currRank : prevRank;
+        const rejects = prevRank < currRank ? currProposer : prevProposer;
+        const accepts = prevRank < currRank ? prevProposer : currProposer;
+        people.unshift(rejects);
+        preferences[rejects].shift();
+        const rejected = preferences[proposed].slice(idx);
+        for (const r of rejected) {
+          preferences[r] = preferences[r].filter(person => person !== proposed);
+        }
+        preferences[proposed] = preferences[proposed].slice(0, idx);
+        accepted[proposed] = accepts;
       } else {
-        data = breakup(data, nextProposal, person)
-        data = removePreference(data, person)
-
-        matches[data[person][0]] = person
+        accepted[proposed] = currProposer;
       }
     }
-    return [matches, data]
-  }, [{}, {...data}])
-}
-function head (arr) {
-  return (arr && arr[0]) || null
-}
-function secondPhase (_data) {
-  const data = {..._data}
-  const participants = Object.keys(data)
-  return participants.reduce((state, person) => {
-    const preferences = data[person]
-    const first = head(preferences)
-        // Get the current index of the person
-    const index = data[first].indexOf(person) + 1
-    const itemsToBeRemoved = data[first].slice(index, data[first].length + 1)
-        // slice away all items below the index
-    data[first] = data[first].slice(0, index)
-    itemsToBeRemoved.forEach((item) => {
-      data[person] = data[person].filter(i => i !== item)
-      data[item] = data[item].filter(i => i !== first)
-    })
-    return data
-  }, data)
-}
 
-function getRotation (state, index = 0, person = Object.keys(state)[index], items = []) {
-  const isTerminationConditionReached = items.filter(([i]) => i === person)
-  if (isTerminationConditionReached.length) {
-    return [state, items.concat([[person]])]
-  }
-  const secondPreference = state[person] && state[person][1]
-  if (!secondPreference) {
-    return getRotation(state, index + 1, Object.keys(state)[index + 1], items)
-  }
-
-  const newItems = items.concat([[person, secondPreference]])
-  const lastPreference = state[secondPreference][state[secondPreference].length - 1]
-  return getRotation(state, index, lastPreference, newItems)
-}
-
-function mapRotation (state, rotation) {
-  const newRotation = rotation.reduce((pairs, items, i) => {
-    const [_, tail] = items
-    const nextItems = rotation[i + 1]
-    if (!nextItems) {
-      return pairs
-    }
-    const newPairs = pairs.concat([[tail, nextItems[0]]])
-    return newPairs
-  }, [])
-  return [state, newRotation]
-}
-
-function filterRotation (state) {
-  const [newState, rotation] = mapRotation(...getRotation(state))
-  rotation.forEach(([k, v]) => {
-    state[k] = state[k].filter(i => i !== v)
-    state[v] = state[v].filter(i => i !== k)
-  })
-  return newState
-}
-function thirdPhase (state) {
-  const newState = filterRotation(state)
-  const isOneStable = Object.values(newState).some(items => items.length === 1)
-  if (!isOneStable) {
-    return thirdPhase(state)
-  }
-  const stableMatches = Object.entries(newState).filter(([k, v]) => v.length === 1)
-  stableMatches.forEach(([k, [v]]) => {
-    newState[k] = newState[k].filter(i => i === v)
-    newState[v] = newState[v].filter(i => i === k)
-
-    Object.keys(newState).forEach((key) => {
-      if (!([k, v]).includes(key)) {
-        newState[key] = newState[key].filter(i => i !== k)
-        newState[key] = newState[key].filter(i => i !== v)
+    // Phase 2: Reject those lower than the preferences
+    for (let proposer in preferences) {
+      const idx = preferences[proposer].indexOf(accepted[proposer]);
+      if (idx === -1) continue;
+      const kept = preferences[proposer].slice(0, idx + 1);
+      const reject = preferences[proposer].slice(idx + 1);
+      for (const rejected of reject) {
+        preferences[rejected] = preferences[rejected].filter(
+          person => person !== proposer
+        );
       }
-    })
-  })
-
-  const isAllStable = Object.values(newState).every(i => i.length === 1)
-  if (!isAllStable) {
-    return thirdPhase(newState)
-  }
-  return Object.values(Object.entries(newState).map(([k, [v]]) => {
-    return [k, v].sort()
-  }).reduce((cache, items) => {
-    const key = items.join(',')
-    if (!cache[key]) {
-      cache[key] = items
+      preferences[proposer] = kept;
     }
-    return cache
-  }, {}))
+  }
+
+  phase1And2(preferences);
+
+  // Phase 3: Eliminate rotation.
+  // As long as there is a preference list with at least 2 items.
+  while (Object.values(preferences).some(prefs => prefs.length > 1)) {
+    // Find the first list with at least 2 items.
+    const [person] = Object.entries(preferences).find(
+      ([person, prefs]) => prefs.length > 1
+    );
+    if (!person) break;
+
+    // Find all rotations in the table. See the diagrams for clarification.
+    const rotations = getRotation(preferences, person);
+    for (const [x, y] of rotations) {
+      // Remove all items in the rotation list.
+      preferences[x].shift();
+      preferences[y].pop();
+    }
+    // Repeat the proposal.
+    phase1And2(preferences);
+  }
+  const result = [];
+  for (let person in preferences) {
+    if (preferences[person].length === 0) {
+      throw new Error("no stable matching: empty list");
+    }
+    const match = preferences[person][0];
+    if (preferences[match][0] === person) {
+      result.push([person, preferences[person][0]]);
+      delete preferences[person];
+      delete preferences[match];
+    }
+  }
+  return result;
 }
 
-module.exports = (data) => {
-  const [_, state] = firstPhase(data)
+function getRotation(
+  preferences,
+  person,
+  secondOrLast = true,
+  p = [person],
+  q = []
+) {
+  const prefs = preferences[person];
+  if (!prefs)
+    throw new Error("getRotationError: no stable matching: list is empty");
 
-  const state2 = secondPhase(state)
-  const state3 = thirdPhase(state2)
-  return state3
+  // Find the second item on the list and push to p.
+  // Else find the last item on the list and push to q.
+  // This step repeats until the entry in p is not unique.
+  const target = prefs[secondOrLast ? 1 : prefs.length - 1];
+  const rotationExists = !secondOrLast && p.includes(target);
+  secondOrLast ? q.push(target) : p.push(target);
+  if (rotationExists) {
+    // The rotation might not start at the first index. So remove all the items
+    // before the rotation starts.
+    while (head(p) !== target) {
+      p.shift();
+      q.shift();
+    }
+    p.shift();
+    const rotation = [];
+    while (p.length) {
+      const k = p.shift();
+      const v = q.shift();
+      rotation.push([k, v]);
+    }
+    // Push the last item as the first.
+    rotation.unshift(rotation.pop());
+    return rotation;
+  }
+  return getRotation(preferences, target, !secondOrLast, p, q);
 }
+
+module.exports = stableRoommateProblem;
