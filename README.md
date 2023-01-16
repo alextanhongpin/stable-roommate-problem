@@ -7,3 +7,4 @@ To understand more about the algorithm, see the wiki page in the references, wit
 
 1. https://youtu.be/5QLxAp8mRKo
 2. https://en.wikipedia.org/wiki/Stable_roommates_problem
+3. https://iq.opengenus.org/stable-roommates-problem/
